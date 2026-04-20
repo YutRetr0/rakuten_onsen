@@ -9,6 +9,7 @@ from dateutil import parser as dateparser
 
 from rakuten import RakutenTravel, REGIONS
 from cache import TTLCache
+from watcher import list_watches, add_watch, remove_watch, check_all
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO,
@@ -20,13 +21,14 @@ client = RakutenTravel(
     app_id=os.getenv("RAKUTEN_APP_ID"),
     affiliate_id=os.getenv("RAKUTEN_AFFILIATE_ID") or None,
 )
-cache = TTLCache(ttl=300)  # 5 minutes
+cache = TTLCache(ttl=300)
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(cache.invalidate_all, "interval", minutes=5,
                   id="refresh", replace_existing=True)
+scheduler.add_job(lambda: check_all(client), "interval", minutes=5,
+                  id="watcher", replace_existing=True, max_instances=1)
 scheduler.start()
-
 
 def _do_search(region, ci, co, adults, rooms, max_charge, max_pages):
     all_hotels = []
@@ -75,7 +77,7 @@ def api_search():
     max_charge = request.args.get("max_charge", type=int)
     pages      = min(int(request.args.get("pages", 2)), 5)
 
-    key = f"{region}:{ci.date()}:{co.date()}:{adults}:{rooms}:{max_charge}:{pages}"
+    key = f"{{region}}:{{ci.date()}}:{{co.date()}}:{{adults}}:{{rooms}}:{{max_charge}}:{{pages}}"
     try:
         hotels = cache.get_or_set(
             key,
@@ -95,6 +97,44 @@ def api_search():
         "cache_ttl_seconds": cache.ttl,
         "hotels": hotels,
     })
+
+
+@app.route("/api/watch", methods=["GET"]) 
+def api_watch_list():
+    return jsonify(list_watches())
+
+
+@app.route("/api/watch", methods=["POST"]) 
+def api_watch_add():
+    body = request.get_json(force=True)
+    required = ["region", "hotel_no", "checkin", "checkout"]
+    for k in required:
+        if k not in body:
+            return jsonify({"error": f"missing field: {k}"}), 400
+    item = {
+        "region":        body["region"],
+        "hotel_no":      int(body["hotel_no"]),
+        "hotel_name":    body.get("hotel_name", ""),
+        "checkin":       body["checkin"],
+        "checkout":      body["checkout"],
+        "adults":        int(body.get("adults", 2)),
+        "rooms":         int(body.get("rooms", 1)),
+        "room_keywords": body.get("room_keywords", []),
+        "max_price":     body.get("max_price"),
+        "channels":      body.get("channels", ["wecom"]),
+    }
+    return jsonify(add_watch(item))
+
+
+@app.route("/api/watch/<wid>", methods=["DELETE"]) 
+def api_watch_del(wid):
+    return jsonify({"deleted": remove_watch(wid)})
+
+
+@app.route("/api/watch/check_now", methods=["POST"]) 
+def api_watch_check_now():
+    check_all(client)
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
