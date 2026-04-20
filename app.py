@@ -30,6 +30,7 @@ scheduler.add_job(lambda: check_all(client), "interval", minutes=5,
                   id="watcher", replace_existing=True, max_instances=1)
 scheduler.start()
 
+
 def _do_search(region, ci, co, adults, rooms, max_charge, max_pages):
     all_hotels = []
     for page in range(1, max_pages + 1):
@@ -77,7 +78,7 @@ def api_search():
     max_charge = request.args.get("max_charge", type=int)
     pages      = min(int(request.args.get("pages", 2)), 5)
 
-    key = f"{{region}}:{{ci.date()}}:{{co.date()}}:{{adults}}:{{rooms}}:{{max_charge}}:{{pages}}"
+    key = f"{region}:{ci.date()}:{co.date()}:{adults}:{rooms}:{max_charge}:{pages}"
     try:
         hotels = cache.get_or_set(
             key,
@@ -99,12 +100,11 @@ def api_search():
     })
 
 
-@app.route("/api/watch", methods=["GET"]) 
+@app.route("/api/watch", methods=["GET"])
 def api_watch_list():
     return jsonify(list_watches())
 
-
-@app.route("/api/watch", methods=["POST"]) 
+@app.route("/api/watch", methods=["POST"])
 def api_watch_add():
     body = request.get_json(force=True)
     required = ["region", "hotel_no", "checkin", "checkout"]
@@ -125,17 +125,14 @@ def api_watch_add():
     }
     return jsonify(add_watch(item))
 
-
-@app.route("/api/watch/<wid>", methods=["DELETE"]) 
+@app.route("/api/watch/<wid>", methods=["DELETE"])
 def api_watch_del(wid):
     return jsonify({"deleted": remove_watch(wid)})
 
-
-@app.route("/api/watch/check_now", methods=["POST"]) 
+@app.route("/api/watch/check_now", methods=["POST"])
 def api_watch_check_now():
     check_all(client)
     return jsonify({"ok": True})
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
