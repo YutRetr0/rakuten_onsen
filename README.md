@@ -33,3 +33,13 @@ GET /api/search?region=hyogo&checkin=2026-05-01&checkout=2026-05-03&adults=2&max
 - Rakuten API limit: ~1 request/second (auto-throttled)
 - Run with `debug=False` to avoid duplicate scheduler instances
 - For multi-worker deployment, replace TTLCache with Redis
+
+## Development
+
+![CI](https://github.com/YutRetr0/rakuten_onsen/actions/workflows/ci.yml/badge.svg)
+
+```bash
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+pytest -v
+```
