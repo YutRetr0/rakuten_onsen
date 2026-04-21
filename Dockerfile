@@ -10,7 +10,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=5000 \
     WATCH_FILE=/data/watchlist.json \
-    STATE_FILE=/data/state.json
+    STATE_FILE=/data/state.json \
+    DB_PATH=/data/rakuten_onsen.db
 RUN useradd -r -u 1000 -m -d /app app \
  && mkdir -p /data && chown app:app /data
 WORKDIR /app
