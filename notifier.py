@@ -48,7 +48,7 @@ def _serverchan(title, body, url):
         return log.warning("serverchan not configured")
     desp = body + (f"\n\n[View]({url})" if url else "")
     r = requests.post(
-        f"https://sctapi.ftqq.com/{{key}}.send",
+        f"https://sctapi.ftqq.com/{key}.send",
         data={"title": title, "desp": desp},
         timeout=10,
     )
@@ -74,11 +74,11 @@ def _telegram(title, body, url):
     chat = os.getenv("TELEGRAM_CHAT_ID")
     if not (token and chat):
         return log.warning("telegram not configured")
-    text = f"*{{title}}*\n\n{{body}}"
+    text = f"*{title}*\n\n{body}"
     if url:
         text += f"\n\n[View]({url})"
     r = requests.post(
-        f"https://api.telegram.org/bot{{token}}/sendMessage",
+        f"https://api.telegram.org/bot{token}/sendMessage",
         json={"chat_id": chat, "text": text, "parse_mode": "Markdown"},
         timeout=10,
     )
@@ -93,7 +93,7 @@ def _email(title, body, url):
     to = os.getenv("EMAIL_TO")
     if not all([host, user, pwd, to]):
         return log.warning("smtp not configured")
-    full = body + (f"\n\n{{url}}" if url else "")
+    full = body + (f"\n\n{url}" if url else "")
     msg = MIMEText(full, "plain", "utf-8")
     msg["Subject"] = title
     msg["From"] = formataddr(("Onsen Watcher", user))
@@ -120,7 +120,7 @@ def _bark(title, body, url):
     if not key:
         return log.warning("bark not configured")
     r = requests.post(
-        f"https://api.day.app/{{key}}",
+        f"https://api.day.app/{key}",
         json={"title": title, "body": body, "url": url},
         timeout=10,
     )
