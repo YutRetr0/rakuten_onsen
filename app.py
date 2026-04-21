@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from datetime import datetime, timedelta
@@ -8,6 +9,7 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 
 from cache import TTLCache
+from db import get_conn
 from rakuten import REGIONS, RakutenTravel
 from watcher import add_watch, check_all, list_watches, remove_watch
 
@@ -133,6 +135,72 @@ def api_watch_del(wid):
 def api_watch_check_now():
     check_all(client)
     return jsonify({"ok": True})
+
+
+@app.route("/api/notifications/history")
+def api_notifications_history():
+    try:
+        days = min(int(request.args.get("days", 30)), 365)
+        limit = min(int(request.args.get("limit", 200)), 1000)
+        watch_id = request.args.get("watch_id")
+        since = (datetime.utcnow() - timedelta(days=days)).isoformat()
+
+        sql = (
+            "SELECT nh.id, nh.watch_id, w.hotel_name, w.region,"
+            " nh.notified_at, nh.matched_count, nh.channels"
+            " FROM notification_history nh"
+            " LEFT JOIN watches w ON nh.watch_id = w.id"
+            " WHERE nh.notified_at >= ?"
+        )
+        params: list = [since]
+        if watch_id:
+            sql += " AND nh.watch_id = ?"
+            params.append(watch_id)
+        sql += " ORDER BY nh.notified_at DESC LIMIT ?"
+        params.append(limit)
+
+        with get_conn() as conn:
+            rows = conn.execute(sql, params).fetchall()
+
+        items = [
+            {
+                "id": row["id"],
+                "watch_id": row["watch_id"],
+                "hotel_name": row["hotel_name"] or "",
+                "region": row["region"] or "",
+                "notified_at": row["notified_at"],
+                "matched_count": row["matched_count"],
+                "channels": json.loads(row["channels"]),
+            }
+            for row in rows
+        ]
+        return jsonify({"count": len(items), "items": items})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/notifications/daily")
+def api_notifications_daily():
+    try:
+        days = min(int(request.args.get("days", 30)), 90)
+        since = (datetime.utcnow() - timedelta(days=days)).isoformat()
+
+        with get_conn() as conn:
+            rows = conn.execute(
+                "SELECT substr(notified_at, 1, 10) AS d, COUNT(*) AS c"
+                " FROM notification_history WHERE notified_at >= ? GROUP BY d",
+                (since,),
+            ).fetchall()
+
+        counts = {row["d"]: row["c"] for row in rows}
+        today = datetime.utcnow().date()
+        buckets = []
+        for i in range(days - 1, -1, -1):
+            d = (today - timedelta(days=i)).isoformat()
+            buckets.append({"date": d, "count": counts.get(d, 0)})
+        return jsonify({"days": days, "buckets": buckets})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

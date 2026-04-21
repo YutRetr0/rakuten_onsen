@@ -50,6 +50,20 @@ mv watchlist.json watchlist.json.bak
 mv state.json state.json.bak
 ```
 
+## Notification history
+
+The `notification_history` table records every notification sent. The Web UI surfaces this as a "📊 通知历史" panel at the bottom of the home page, showing:
+
+- A bar chart of notifications per day for the last 7 / 30 / 90 days
+- A filterable list of recent notifications (per watch, with hotel name / channels)
+
+Two read-only JSON endpoints back this UI:
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/notifications/history?days=30&watch_id=&limit=200` | Recent notification rows with hotel info (LEFT JOIN watches) |
+| `GET /api/notifications/daily?days=30` | Daily aggregated counts; missing days are filled with `count=0` so the chart x-axis is continuous |
+
 ## Docker
 
 [![Docker](https://github.com/YutRetr0/rakuten_onsen/actions/workflows/docker.yml/badge.svg)](https://github.com/YutRetr0/rakuten_onsen/actions/workflows/docker.yml)
