@@ -34,6 +34,22 @@ GET /api/search?region=hyogo&checkin=2026-05-01&checkout=2026-05-03&adults=2&max
 - Run with `debug=False` to avoid duplicate scheduler instances
 - For multi-worker deployment, replace TTLCache with Redis
 
+## Storage
+
+Watch list and state are persisted in SQLite at `DB_PATH` (default `rakuten_onsen.db`).
+The database is auto-created on first run.
+
+### Migrating from the old JSON files
+
+If you previously ran a version that used `watchlist.json` / `state.json`:
+
+```bash
+python migrate_json_to_sqlite.py --dry-run   # preview
+python migrate_json_to_sqlite.py             # actually migrate
+mv watchlist.json watchlist.json.bak
+mv state.json state.json.bak
+```
+
 ## Development
 
 ![CI](https://github.com/YutRetr0/rakuten_onsen/actions/workflows/ci.yml/badge.svg)
