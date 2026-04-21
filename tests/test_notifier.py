@@ -10,7 +10,6 @@ Channels with known f-string bugs in the current source are marked
 fix PR is merged, those tests will automatically become xpass - the xfail
 marker should then be removed.
 """
-import pytest
 import responses as resp_lib
 
 # ---------------------------------------------------------------------------

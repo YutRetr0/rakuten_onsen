@@ -1,11 +1,12 @@
 import json
 import logging
+import uuid
 from datetime import datetime
 
 from dateutil import parser as dateparser
 
-from notifier import notify
 from db import get_conn, init_db
+from notifier import notify
 
 log = logging.getLogger(__name__)
 init_db()  # ensure schema exists at import time
@@ -152,5 +153,3 @@ def check_all(client):
                 )
         except Exception as e:
             log.exception("check watch %s failed: %s", w.get("id"), e)
-
-    _save(STATE_FILE, state)
