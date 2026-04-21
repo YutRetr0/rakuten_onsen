@@ -34,6 +34,30 @@ GET /api/search?region=hyogo&checkin=2026-05-01&checkout=2026-05-03&adults=2&max
 - Run with `debug=False` to avoid duplicate scheduler instances
 - For multi-worker deployment, replace TTLCache with Redis
 
+## Docker
+
+[![Docker](https://github.com/YutRetr0/rakuten_onsen/actions/workflows/docker.yml/badge.svg)](https://github.com/YutRetr0/rakuten_onsen/actions/workflows/docker.yml)
+
+Run the published image (auto-built from `main`):
+
+```bash
+docker run -d --name rakuten_onsen \
+  -p 5000:5000 \
+  -v $PWD/data:/data \
+  -e RAKUTEN_APP_ID=your_app_id \
+  -e WECOM_BOT_WEBHOOK=https://... \
+  ghcr.io/yutretr0/rakuten_onsen:latest
+```
+
+> Note: the app starts an APScheduler `BackgroundScheduler` at module import time.
+> The image runs `gunicorn -w 2` by default; if you need exactly-once watch
+> execution, set `-w 1` or run a separate scheduler process.
+
+> **First-time setup**: after the image is first pushed to GHCR, go to
+> GitHub → Packages → `rakuten_onsen` → Package settings → Change visibility → Public.
+> Also verify Settings → Actions → General → Workflow permissions is set to
+> "Read and write permissions".
+
 ## Development
 
 ![CI](https://github.com/YutRetr0/rakuten_onsen/actions/workflows/ci.yml/badge.svg)
