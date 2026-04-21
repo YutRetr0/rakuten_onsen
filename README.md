@@ -50,12 +50,39 @@ mv watchlist.json watchlist.json.bak
 mv state.json state.json.bak
 ```
 
+## Docker
+
+[![Docker](https://github.com/YutRetr0/rakuten_onsen/actions/workflows/docker.yml/badge.svg)](https://github.com/YutRetr0/rakuten_onsen/actions/workflows/docker.yml)
+
+Run the published image (auto-built from `main`):
+
+```bash
+docker run -d --name rakuten_onsen \
+  -p 5000:5000 \
+  -v $PWD/data:/data \
+  -e RAKUTEN_APP_ID=your_app_id \
+  -e WECOM_BOT_WEBHOOK=https://... \
+  ghcr.io/yutretr0/rakuten_onsen:latest
+```
+
+> Note: the app starts an APScheduler `BackgroundScheduler` at module import time.
+> The image runs `gunicorn -w 2` by default; if you need exactly-once watch
+> execution, set `-w 1` or run a separate scheduler process.
+
+> **First-time setup**: after the image is first pushed to GHCR, go to
+> GitHub → Packages → `rakuten_onsen` → Package settings → Change visibility → Public.
+> Also verify Settings → Actions → General → Workflow permissions is set to
+> "Read and write permissions".
+
 ## Development
 
 ![CI](https://github.com/YutRetr0/rakuten_onsen/actions/workflows/ci.yml/badge.svg)
+![Linted by Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)
 
 ```bash
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 pytest -v
+ruff check .
+ruff format --check .
 ```

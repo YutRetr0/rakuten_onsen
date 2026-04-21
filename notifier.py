@@ -1,9 +1,10 @@
+import logging
 import os
 import smtplib
-import logging
-import requests
 from email.mime.text import MIMEText
 from email.utils import formataddr
+
+import requests
 
 log = logging.getLogger(__name__)
 

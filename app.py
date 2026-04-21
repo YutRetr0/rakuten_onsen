@@ -1,15 +1,15 @@
-import os
 import logging
+import os
 from datetime import datetime, timedelta
 
-from dotenv import load_dotenv
-from flask import Flask, request, jsonify, render_template
 from apscheduler.schedulers.background import BackgroundScheduler
 from dateutil import parser as dateparser
+from dotenv import load_dotenv
+from flask import Flask, jsonify, render_template, request
 
-from rakuten import RakutenTravel, REGIONS
 from cache import TTLCache
-from watcher import list_watches, add_watch, remove_watch, check_all
+from rakuten import REGIONS, RakutenTravel
+from watcher import add_watch, check_all, list_watches, remove_watch
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO,

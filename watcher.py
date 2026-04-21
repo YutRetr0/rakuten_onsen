@@ -1,7 +1,7 @@
 import json
-import uuid
 import logging
 from datetime import datetime
+
 from dateutil import parser as dateparser
 
 from notifier import notify
@@ -152,3 +152,5 @@ def check_all(client):
                 )
         except Exception as e:
             log.exception("check watch %s failed: %s", w.get("id"), e)
+
+    _save(STATE_FILE, state)

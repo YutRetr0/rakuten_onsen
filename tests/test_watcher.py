@@ -1,5 +1,6 @@
 import importlib
 import pytest
+import watcher
 
 
 def _reload_modules(monkeypatch, tmp_path):

@@ -1,10 +1,8 @@
 """
 Rakuten Travel API client.
 """
-import time
 import logging
-from datetime import datetime
-from typing import Optional
+import time
 
 import requests
 
@@ -46,7 +44,7 @@ REGIONS = {
 
 
 class RakutenTravel:
-    def __init__(self, app_id: str, affiliate_id: Optional[str] = None,
+    def __init__(self, app_id: str, affiliate_id: str | None = None,
                  min_interval: float = 1.1, timeout: int = 15):
         if not app_id:
             raise ValueError("RAKUTEN_APP_ID is required")

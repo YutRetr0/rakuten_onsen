@@ -1,7 +1,8 @@
-import time
-import threading
 import logging
-from typing import Callable, Any
+import threading
+import time
+from collections.abc import Callable
+from typing import Any
 
 log = logging.getLogger(__name__)
 
