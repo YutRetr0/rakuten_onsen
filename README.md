@@ -65,6 +65,16 @@ docker run -d --name rakuten_onsen \
   ghcr.io/yutretr0/rakuten_onsen:latest
 ```
 
+The image persists SQLite data at `/data/rakuten_onsen.db` (mount `-v $PWD/data:/data` to keep it across container restarts).
+
+If you're upgrading from a pre-SQLite image and have legacy `watchlist.json` / `state.json` in your `/data` volume, run the migration once:
+
+```bash
+docker run --rm -v $PWD/data:/data \
+  ghcr.io/yutretr0/rakuten_onsen:latest \
+  python migrate_json_to_sqlite.py
+```
+
 > Note: the app starts an APScheduler `BackgroundScheduler` at module import time.
 > The image runs `gunicorn -w 2` by default; if you need exactly-once watch
 > execution, set `-w 1` or run a separate scheduler process.
