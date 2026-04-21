@@ -57,7 +57,7 @@ def _match_rooms(rooms, keywords, max_price):
         if max_price and r.get("price") and r["price"] > max_price:
             continue
         if keywords:
-            text = f"{{r.get('room_name') or ''}} {{r.get('plan_name') or ''}}"
+            text = f"{r.get('room_name') or ''} {r.get('plan_name') or ''}"
             if not any(k.lower() in text.lower() for k in keywords):
                 continue
         matched.append(r)
@@ -96,19 +96,19 @@ def check_all(client):
 
             if should_notify:
                 hotel_name = w.get("hotel_name") or (target["name"] if target else "?")
-                lines = [f"Hotel: {{hotel_name}}",
-                         f"Date: {{w['checkin']}} -> {{w['checkout']}}",
-                         f"Guests: {{w.get('adults',2)}} adults / {{w.get('rooms',1)}} room(s)",
+                lines = [f"Hotel: {hotel_name}",
+                         f"Date: {w['checkin']} -> {w['checkout']}",
+                         f"Guests: {w.get('adults',2)} adults / {w.get('rooms',1)} room(s)",
                          "", "Available rooms:"]
                 for r in available_rooms[:8]:
-                    price = f"{{r['price']:,}} JPY" if r.get("price") else "-"
+                    price = f"{r['price']:,} JPY" if r.get("price") else "-"
                     lines.append(
-                        f"- {{r.get('room_name') or '?'}} | {{r.get('plan_name') or ''}} "
-                        f"| {{price}} | {{r.get('available')}} left"
+                        f"- {r.get('room_name') or '?'} | {r.get('plan_name') or ''} "
+                        f"| {price} | {r.get('available')} left"
                     )
                 notify(
                     w.get("channels", ["wecom"]),
-                    title=f"Onsen available: {{hotel_name}}",
+                    title=f"Onsen available: {hotel_name}",
                     body="\n".join(lines),
                     url=(target or {}).get("url") or "",
                 )
