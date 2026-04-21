@@ -7,12 +7,11 @@ braces like `{token}` or `{key}`.
 
 Channels with known f-string bugs in the current source are marked
 ``xfail(strict=False)`` so CI doesn't block.  Once the companion f-string
-fix PR is merged, those tests will automatically become xpass – the xfail
+fix PR is merged, those tests will automatically become xpass - the xfail
 marker should then be removed.
 """
 import pytest
 import responses as resp_lib
-
 
 # ---------------------------------------------------------------------------
 # WeChat Work bot (_wecom_bot) — currently correct, no xfail

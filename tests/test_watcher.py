@@ -1,6 +1,3 @@
-import json
-import importlib
-import pytest
 import watcher
 
 

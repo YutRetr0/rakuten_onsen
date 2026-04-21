@@ -1,0 +1,17 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["templates"]
+
+[tool.ruff.lint]
+# E/W = pycodestyle, F = pyflakes, I = isort, B = bugbear, UP = pyupgrade,
+# SIM = simplify, RUF = ruff-specific (catches things like the f-string `{{}}` mistake via RUF027)
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = [
+  "E501",   # line too long — already capped via line-length but let formatter handle
+  "B008",   # function call in default arg (Flask/typer pattern)
+  "SIM108", # ternary not always more readable
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]  # allow `assert False` style in tests if needed
