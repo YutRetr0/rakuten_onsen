@@ -37,9 +37,12 @@ GET /api/search?region=hyogo&checkin=2026-05-01&checkout=2026-05-03&adults=2&max
 ## Development
 
 ![CI](https://github.com/YutRetr0/rakuten_onsen/actions/workflows/ci.yml/badge.svg)
+![Linted by Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)
 
 ```bash
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 pytest -v
+ruff check .
+ruff format --check .
 ```

@@ -1,6 +1,6 @@
 from datetime import datetime
-from rakuten import RakutenTravel
 
+from rakuten import RakutenTravel
 
 FIXTURE = {
     "hotels": [

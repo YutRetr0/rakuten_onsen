@@ -1,9 +1,10 @@
-import os
 import json
-import uuid
 import logging
+import os
 import threading
+import uuid
 from datetime import datetime
+
 from dateutil import parser as dateparser
 
 from notifier import notify
@@ -17,7 +18,7 @@ _lock = threading.Lock()
 def _load(path, default):
     if not os.path.exists(path):
         return default
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 def _save(path, data):
