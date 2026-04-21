@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+tests
+*.md
+.env
+.env.local
+watchlist.json
+state.json
+.DS_Store
