@@ -15,3 +15,4 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B011"]  # allow `assert False` style in tests if needed
+"migrate_json_to_sqlite.py" = ["I001", "UP015"]  # pre-existing style in migration script

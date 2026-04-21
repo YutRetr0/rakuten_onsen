@@ -1,9 +1,17 @@
-import watcher
+import importlib
+
+
+def _reload_modules(monkeypatch, tmp_path):
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+    import db
+    import watcher
+    importlib.reload(db)
+    importlib.reload(watcher)
+    return watcher
 
 
 def test_add_and_list_watches(tmp_path, monkeypatch):
-    monkeypatch.setattr(watcher, "WATCH_FILE", str(tmp_path / "watches.json"))
-    monkeypatch.setattr(watcher, "STATE_FILE", str(tmp_path / "state.json"))
+    watcher = _reload_modules(monkeypatch, tmp_path)
 
     item = {
         "region": "oita",
@@ -15,13 +23,12 @@ def test_add_and_list_watches(tmp_path, monkeypatch):
     watches = watcher.list_watches()
 
     assert len(watches) == 1
-    assert watches[0]["hotel_no"] == "123456"
+    assert watches[0]["hotel_no"] == 123456
     assert watches[0]["id"] == added["id"]
 
 
 def test_remove_watch(tmp_path, monkeypatch):
-    monkeypatch.setattr(watcher, "WATCH_FILE", str(tmp_path / "watches.json"))
-    monkeypatch.setattr(watcher, "STATE_FILE", str(tmp_path / "state.json"))
+    watcher = _reload_modules(monkeypatch, tmp_path)
 
     item = {
         "region": "oita",
@@ -37,8 +44,7 @@ def test_remove_watch(tmp_path, monkeypatch):
 
 
 def test_watch_id_format(tmp_path, monkeypatch):
-    monkeypatch.setattr(watcher, "WATCH_FILE", str(tmp_path / "watches.json"))
-    monkeypatch.setattr(watcher, "STATE_FILE", str(tmp_path / "state.json"))
+    watcher = _reload_modules(monkeypatch, tmp_path)
 
     item = {
         "region": "hokkaido",
@@ -51,8 +57,7 @@ def test_watch_id_format(tmp_path, monkeypatch):
 
 
 def test_watch_created_at_is_iso(tmp_path, monkeypatch):
-    monkeypatch.setattr(watcher, "WATCH_FILE", str(tmp_path / "watches.json"))
-    monkeypatch.setattr(watcher, "STATE_FILE", str(tmp_path / "state.json"))
+    watcher = _reload_modules(monkeypatch, tmp_path)
 
     item = {
         "region": "kyoto",
@@ -62,6 +67,24 @@ def test_watch_created_at_is_iso(tmp_path, monkeypatch):
     }
     from datetime import datetime
     added = watcher.add_watch(item)
-    # Should parse without error as an ISO datetime string
     dt = datetime.fromisoformat(added["created_at"])
     assert dt.year >= 2024
+
+
+def test_two_watches_ordered_by_created_at(tmp_path, monkeypatch):
+    watcher = _reload_modules(monkeypatch, tmp_path)
+
+    item1 = {"region": "oita", "hotel_no": "1", "checkin": "2026-05-01", "checkout": "2026-05-02"}
+    item2 = {"region": "kyoto", "hotel_no": "2", "checkin": "2026-06-01", "checkout": "2026-06-02"}
+    watcher.add_watch(item1)
+    watcher.add_watch(item2)
+
+    watches = watcher.list_watches()
+    assert len(watches) == 2
+    assert watches[0]["created_at"] <= watches[1]["created_at"]
+
+
+def test_remove_nonexistent_returns_false(tmp_path, monkeypatch):
+    watcher = _reload_modules(monkeypatch, tmp_path)
+    assert watcher.remove_watch("nonexistent") is False
+
