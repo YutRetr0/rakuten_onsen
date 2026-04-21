@@ -44,7 +44,6 @@ def test_wecom_bot(monkeypatch):
 # ServerChan (_serverchan) — f-string bug: `f"...{{key}}..."` → xfail
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(strict=False, reason="Pending f-string fix: {{key}} in _serverchan URL")
 @resp_lib.activate
 def test_serverchan(monkeypatch):
     monkeypatch.setenv("SERVERCHAN_KEY", "abc123")
@@ -65,7 +64,6 @@ def test_serverchan(monkeypatch):
 # Telegram (_telegram) — f-string bug: `{{token}}` and `{{title}}/{{body}}` → xfail
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(strict=False, reason="Pending f-string fix: {{token}} in _telegram URL")
 @resp_lib.activate
 def test_telegram(monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
@@ -92,7 +90,6 @@ def test_telegram(monkeypatch):
 # Bark (_bark) — f-string bug: `{{key}}` in URL → xfail
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(strict=False, reason="Pending f-string fix: {{key}} in _bark URL")
 @resp_lib.activate
 def test_bark(monkeypatch):
     monkeypatch.setenv("BARK_KEY", "bk")
