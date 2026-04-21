@@ -1,5 +1,4 @@
 import importlib
-import pytest
 
 
 def _reload_db(monkeypatch, tmp_path):
