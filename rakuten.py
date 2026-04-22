@@ -2,6 +2,7 @@
 Rakuten Travel API client.
 """
 import logging
+import os
 import time
 
 import requests
@@ -45,15 +46,19 @@ REGIONS = {
 
 class RakutenTravel:
     def __init__(self, app_id: str, affiliate_id: str | None = None,
-                 min_interval: float = 1.1, timeout: int = 15):
+                 min_interval: float = 1.1, timeout: int = 15,
+                 access_key: str | None = None):
         if not app_id:
             raise ValueError("RAKUTEN_APP_ID is required")
         self.app_id = app_id
         self.affiliate_id = affiliate_id
+        self.access_key = access_key or os.getenv("RAKUTEN_ACCESS_KEY")
         self.min_interval = min_interval
         self.timeout = timeout
         self._last_call = 0.0
         self.session = requests.Session()
+        if not self.access_key:
+            log.warning("RAKUTEN_ACCESS_KEY is not set; requests may be rejected with 401/403")
 
     def _throttle(self):
         elapsed = time.time() - self._last_call
@@ -65,10 +70,17 @@ class RakutenTravel:
         params = {**params, "applicationId": self.app_id, "format": "json"}
         if self.affiliate_id:
             params["affiliateId"] = self.affiliate_id
+        if self.access_key:
+            params["accessKey"] = self.access_key
         self._throttle()
         log.info("GET %s", url)
         resp = self.session.get(url, params=params, timeout=self.timeout)
-        if resp.status_code >= 400:
+        if resp.status_code in (401, 403):
+            log.error(
+                "API auth error %s (check RAKUTEN_APP_ID / RAKUTEN_ACCESS_KEY): %s",
+                resp.status_code, resp.text[:300],
+            )
+        elif resp.status_code >= 400:
             log.warning("API error %s: %s", resp.status_code, resp.text[:300])
         resp.raise_for_status()
         return resp.json()

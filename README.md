@@ -13,7 +13,7 @@ free Rakuten Travel API (`VacantHotelSearch`).
 ```bash
 pip install -r requirements.txt
 cp .env.example .env
-# Edit .env and put your RAKUTEN_APP_ID
+# Edit .env and put your RAKUTEN_APP_ID and RAKUTEN_ACCESS_KEY
 python app.py
 ```
 Open http://localhost:5000
@@ -26,8 +26,8 @@ GET /api/search?region=hyogo&checkin=2026-05-01&checkout=2026-05-03&adults=2&max
 
 ## Get a Rakuten App ID (free)
 1. Register at https://webservice.rakuten.co.jp/
-2. Create an app, copy the Application ID
-3. Put it in `.env`
+2. Create an app, copy the Application ID and Access Key
+3. Put them in `.env` as `RAKUTEN_APP_ID` and `RAKUTEN_ACCESS_KEY`
 
 ## Notes
 - Rakuten API limit: ~1 request/second (auto-throttled)
@@ -61,6 +61,7 @@ docker run -d --name rakuten_onsen \
   -p 5000:5000 \
   -v $PWD/data:/data \
   -e RAKUTEN_APP_ID=your_app_id \
+  -e RAKUTEN_ACCESS_KEY=your_access_key \
   -e WECOM_BOT_WEBHOOK=https://... \
   ghcr.io/yutretr0/rakuten_onsen:latest
 ```
