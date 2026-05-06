@@ -11,8 +11,7 @@ from rakuten import REGIONS, RakutenTravel
 from watcher import add_watch, check_all, list_watches, remove_watch
 
 load_dotenv()
-logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 app = Flask(__name__)
 
@@ -112,7 +111,9 @@ scheduler = None
 if _scheduler_enabled():
     scheduler = BackgroundScheduler()
     scheduler.add_job(cache.invalidate_all, "interval", minutes=5, id="refresh", replace_existing=True)
-    scheduler.add_job(lambda: check_all(client), "interval", minutes=5, id="watcher", replace_existing=True, max_instances=1)
+    scheduler.add_job(
+        lambda: check_all(client), "interval", minutes=5, id="watcher", replace_existing=True, max_instances=1
+    )
     scheduler.start()
 
 
@@ -121,8 +122,7 @@ def _do_search(region, ci, co, adults, rooms, max_charge, max_pages):
     for page in range(1, max_pages + 1):
         try:
             data = client.search_vacant_onsen(
-                region, ci, co, adults=adults, rooms=rooms,
-                max_charge=max_charge, page=page
+                region, ci, co, adults=adults, rooms=rooms, max_charge=max_charge, page=page
             )
         except Exception as e:
             if "404" in str(e):
@@ -157,29 +157,29 @@ def api_search():
 
     key = f"{region}:{ci.date()}:{co.date()}:{adults}:{rooms}:{max_charge}:{pages}"
     try:
-        hotels = cache.get_or_set(
-            key,
-            lambda: _do_search(region, ci, co, adults, rooms, max_charge, pages)
-        )
+        hotels = cache.get_or_set(key, lambda: _do_search(region, ci, co, adults, rooms, max_charge, pages))
     except Exception as e:
         app.logger.exception("API failed")
         return jsonify({"error": str(e)}), 500
 
-    return jsonify({
-        "region": region,
-        "checkin": ci.strftime("%Y-%m-%d"),
-        "checkout": co.strftime("%Y-%m-%d"),
-        "adults": adults,
-        "rooms": rooms,
-        "count": len(hotels),
-        "cache_ttl_seconds": cache.ttl,
-        "hotels": hotels,
-    })
+    return jsonify(
+        {
+            "region": region,
+            "checkin": ci.strftime("%Y-%m-%d"),
+            "checkout": co.strftime("%Y-%m-%d"),
+            "adults": adults,
+            "rooms": rooms,
+            "count": len(hotels),
+            "cache_ttl_seconds": cache.ttl,
+            "hotels": hotels,
+        }
+    )
 
 
 @app.route("/api/watch", methods=["GET"])
 def api_watch_list():
     return jsonify(list_watches())
+
 
 @app.route("/api/watch", methods=["POST"])
 def api_watch_add():
@@ -192,14 +192,17 @@ def api_watch_add():
         return jsonify({"error": str(e)}), 400
     return jsonify(add_watch(item))
 
+
 @app.route("/api/watch/<wid>", methods=["DELETE"])
 def api_watch_del(wid):
     return jsonify({"deleted": remove_watch(wid)})
+
 
 @app.route("/api/watch/check_now", methods=["POST"])
 def api_watch_check_now():
     check_all(client)
     return jsonify({"ok": True})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
