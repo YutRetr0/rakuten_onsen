@@ -11,6 +11,7 @@ log = logging.getLogger(__name__)
 
 VACANT_URL = "https://app.rakuten.co.jp/services/api/Travel/VacantHotelSearch/20170426"
 AREA_URL   = "https://app.rakuten.co.jp/services/api/Travel/GetAreaClass/20131024"
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 REGIONS = {
     "hokkaido":  {"large": "japan", "middle": "hokkaido"},
@@ -47,7 +48,8 @@ REGIONS = {
 class RakutenTravel:
     def __init__(self, app_id: str, affiliate_id: str | None = None,
                  min_interval: float = 1.1, timeout: int = 15,
-                 access_key: str | None = None):
+                 access_key: str | None = None, max_retries: int = 2,
+                 backoff_base: float = 0.5):
         if not app_id:
             raise ValueError("RAKUTEN_APP_ID is required")
         self.app_id = app_id
@@ -55,6 +57,8 @@ class RakutenTravel:
         self.access_key = access_key or os.getenv("RAKUTEN_ACCESS_KEY")
         self.min_interval = min_interval
         self.timeout = timeout
+        self.max_retries = max_retries
+        self.backoff_base = backoff_base
         self._last_call = 0.0
         self.session = requests.Session()
         if not self.access_key:
@@ -66,24 +70,64 @@ class RakutenTravel:
             time.sleep(self.min_interval - elapsed)
         self._last_call = time.time()
 
+    def _backoff_delay(self, attempt, response=None):
+        delay = self.backoff_base * (2 ** (attempt - 1))
+        if response is None:
+            return delay
+        retry_after = response.headers.get("Retry-After")
+        if not retry_after:
+            return delay
+        try:
+            return max(delay, float(retry_after))
+        except ValueError:
+            return delay
+
     def _get(self, url, params):
         params = {**params, "applicationId": self.app_id, "format": "json"}
         if self.affiliate_id:
             params["affiliateId"] = self.affiliate_id
         if self.access_key:
             params["accessKey"] = self.access_key
-        self._throttle()
-        log.info("GET %s", url)
-        resp = self.session.get(url, params=params, timeout=self.timeout)
-        if resp.status_code in (401, 403):
-            log.error(
-                "API auth error %s (check RAKUTEN_APP_ID / RAKUTEN_ACCESS_KEY): %s",
-                resp.status_code, resp.text[:300],
-            )
-        elif resp.status_code >= 400:
-            log.warning("API error %s: %s", resp.status_code, resp.text[:300])
-        resp.raise_for_status()
-        return resp.json()
+        last_error = None
+        for attempt in range(1, self.max_retries + 2):
+            self._throttle()
+            log.info("GET %s", url)
+            try:
+                resp = self.session.get(url, params=params, timeout=self.timeout)
+            except (requests.Timeout, requests.ConnectionError) as exc:
+                last_error = exc
+                if attempt > self.max_retries:
+                    raise
+                delay = self._backoff_delay(attempt)
+                log.warning(
+                    "API request failed (%s), retrying in %.1fs (%s/%s)",
+                    exc.__class__.__name__, delay, attempt, self.max_retries,
+                )
+                time.sleep(delay)
+                continue
+
+            if resp.status_code in (401, 403):
+                log.error(
+                    "API auth error %s (check RAKUTEN_APP_ID / RAKUTEN_ACCESS_KEY): %s",
+                    resp.status_code, resp.text[:300],
+                )
+            elif resp.status_code in RETRYABLE_STATUS_CODES and attempt <= self.max_retries:
+                delay = self._backoff_delay(attempt, resp)
+                log.warning(
+                    "API error %s, retrying in %.1fs (%s/%s): %s",
+                    resp.status_code, delay, attempt, self.max_retries, resp.text[:300],
+                )
+                time.sleep(delay)
+                continue
+            elif resp.status_code >= 400:
+                log.warning("API error %s: %s", resp.status_code, resp.text[:300])
+
+            resp.raise_for_status()
+            return resp.json()
+
+        if last_error:
+            raise last_error
+        raise RuntimeError("request retry loop exited unexpectedly")
 
     def search_vacant_onsen(self, region_key, checkin, checkout,
                             adults=2, rooms=1, max_charge=None, page=1):

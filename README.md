@@ -77,8 +77,9 @@ docker run --rm -v $PWD/data:/data \
 ```
 
 > Note: the app starts an APScheduler `BackgroundScheduler` at module import time.
-> The image runs `gunicorn -w 2` by default; if you need exactly-once watch
-> execution, set `-w 1` or run a separate scheduler process.
+> The image now defaults to `gunicorn -w 1` so the embedded scheduler does not
+> run in multiple workers by default. If you want to split scheduling into a
+> separate process, run the web workers with `ENABLE_SCHEDULER=0`.
 
 > **First-time setup**: after the image is first pushed to GHCR, go to
 > GitHub → Packages → `rakuten_onsen` → Package settings → Change visibility → Public.
