@@ -2,6 +2,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 
+import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from dateutil import parser as dateparser
 from dotenv import load_dotenv
@@ -123,8 +124,8 @@ def _do_search(region, ci, co, adults, rooms, max_charge, max_pages):
             data = client.search_vacant_onsen(
                 region, ci, co, adults=adults, rooms=rooms, max_charge=max_charge, page=page
             )
-        except Exception as e:
-            if "404" in str(e):
+        except requests.HTTPError as exc:
+            if exc.response is not None and exc.response.status_code == 404:
                 break
             raise
         hotels = client.normalize(data, region, ci, co)
@@ -158,7 +159,7 @@ def api_search():
     key = f"{region}:{ci.date()}:{co.date()}:{adults}:{rooms}:{max_charge}:{pages}"
     try:
         hotels = cache.get_or_set(key, lambda: _do_search(region, ci, co, adults, rooms, max_charge, pages))
-    except Exception:
+    except requests.RequestException:
         app.logger.exception("API failed")
         return jsonify({"error": "internal server error"}), 500
 
