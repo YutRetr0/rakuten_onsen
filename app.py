@@ -23,44 +23,55 @@ client = RakutenTravel(
 cache = TTLCache(ttl=300)
 
 
+class InvalidInputError(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message
+
+
 def _scheduler_enabled():
+    """Return whether the embedded scheduler should run in this process."""
     return os.getenv("ENABLE_SCHEDULER", "1").lower() not in {"0", "false", "no"}
 
 
 def _parse_date(value, field_name):
+    """Parse a user-provided date and raise a safe validation error on failure."""
     try:
         parsed = dateparser.parse(value)
     except (TypeError, ValueError) as exc:
-        raise ValueError(f"invalid {field_name}") from exc
+        raise InvalidInputError(f"invalid {field_name}") from exc
     if parsed is None:
-        raise ValueError(f"invalid {field_name}")
+        raise InvalidInputError(f"invalid {field_name}")
     return parsed
 
 
 def _parse_int(value, field_name, *, minimum=None, maximum=None):
+    """Parse an integer constraint from user input."""
     try:
         parsed = int(value)
     except (TypeError, ValueError) as exc:
-        raise ValueError(f"invalid {field_name}") from exc
+        raise InvalidInputError(f"invalid {field_name}") from exc
     if minimum is not None and parsed < minimum:
-        raise ValueError(f"invalid {field_name}")
+        raise InvalidInputError(f"invalid {field_name}")
     if maximum is not None and parsed > maximum:
-        raise ValueError(f"invalid {field_name}")
+        raise InvalidInputError(f"invalid {field_name}")
     return parsed
 
 
 def _validate_region(region):
+    """Normalize and validate a region query value."""
     normalized = (region or "").strip().lower()
     if normalized not in REGIONS:
-        raise ValueError("invalid region")
+        raise InvalidInputError("invalid region")
     return normalized
 
 
 def _parse_search_dates(args):
+    """Validate supported search date inputs and return check-in/check-out datetimes."""
     has_checkin = "checkin" in args
     has_checkout = "checkout" in args
     if has_checkin != has_checkout:
-        raise ValueError("checkin and checkout must be provided together")
+        raise InvalidInputError("checkin and checkout must be provided together")
     if has_checkin:
         ci = _parse_date(args["checkin"], "checkin")
         co = _parse_date(args["checkout"], "checkout")
@@ -69,11 +80,12 @@ def _parse_search_dates(args):
         ci = _parse_date(d, "date") if d else datetime.today() + timedelta(days=1)
         co = ci + timedelta(days=1)
     if co <= ci:
-        raise ValueError("checkout must be after checkin")
+        raise InvalidInputError("checkout must be after checkin")
     return ci, co
 
 
 def _validate_watch_item(item):
+    """Validate and normalize a watch creation payload."""
     validated = {
         "region": _validate_region(item["region"]),
         "hotel_no": _parse_int(item["hotel_no"], "hotel_no", minimum=1),
@@ -86,7 +98,7 @@ def _validate_watch_item(item):
         "channels": item.get("channels", ["wecom"]),
     }
     if validated["checkout"] <= validated["checkin"]:
-        raise ValueError("checkout must be after checkin")
+        raise InvalidInputError("checkout must be after checkin")
     max_price = item.get("max_price")
     validated["max_price"] = None if max_price in (None, "") else _parse_int(max_price, "max_price", minimum=1)
     return validated
@@ -140,15 +152,15 @@ def api_search():
         max_charge_raw = request.args.get("max_charge")
         max_charge = None if max_charge_raw in (None, "") else _parse_int(max_charge_raw, "max_charge", minimum=1)
         pages = _parse_int(request.args.get("pages", 2), "pages", minimum=1, maximum=5)
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+    except InvalidInputError as exc:
+        return jsonify({"error": exc.message}), 400
 
     key = f"{region}:{ci.date()}:{co.date()}:{adults}:{rooms}:{max_charge}:{pages}"
     try:
         hotels = cache.get_or_set(key, lambda: _do_search(region, ci, co, adults, rooms, max_charge, pages))
-    except Exception as e:
+    except Exception:
         app.logger.exception("API failed")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "internal server error"}), 500
 
     return jsonify(
         {
@@ -178,8 +190,8 @@ def api_watch_add():
             return jsonify({"error": f"missing field: {k}"}), 400
     try:
         item = _validate_watch_item(body)
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+    except InvalidInputError as exc:
+        return jsonify({"error": exc.message}), 400
     return jsonify(add_watch(item))
 
 

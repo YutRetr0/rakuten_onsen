@@ -12,6 +12,7 @@ def build_retry_session(
     total: int = DEFAULT_RETRY_COUNT,
     backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
 ):
+    """Build a requests session with bounded retries for transient HTTP failures."""
     session = session or requests.Session()
     retry = Retry(
         total=total,
