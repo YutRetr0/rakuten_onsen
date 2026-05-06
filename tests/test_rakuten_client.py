@@ -31,6 +31,7 @@ def test_get_retries_on_retryable_status(monkeypatch):
 
     assert result == {"hotels": []}
     assert sleeps == [0.25]
+    assert responses == []
 
 
 @pytest.mark.parametrize("error", [requests.Timeout(), requests.ConnectionError()])
@@ -70,3 +71,4 @@ def test_get_honors_retry_after_header(monkeypatch):
 
     assert result == {"hotels": []}
     assert sleeps == [1.5]
+    assert responses == []

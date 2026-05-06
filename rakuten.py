@@ -95,14 +95,12 @@ class RakutenTravel:
             params["affiliateId"] = self.affiliate_id
         if self.access_key:
             params["accessKey"] = self.access_key
-        last_error = None
         for attempt in range(1, self.max_retries + 2):
             self._throttle()
             log.info("GET %s", url)
             try:
                 resp = self.session.get(url, params=params, timeout=self.timeout)
             except (requests.Timeout, requests.ConnectionError) as exc:
-                last_error = exc
                 if attempt > self.max_retries:
                     raise
                 delay = self._backoff_delay(attempt)
@@ -139,10 +137,6 @@ class RakutenTravel:
 
             resp.raise_for_status()
             return resp.json()
-
-        if last_error:
-            raise last_error
-        raise RuntimeError("maximum retry attempts exceeded without success")
 
     def search_vacant_onsen(self, region_key, checkin, checkout, adults=2, rooms=1, max_charge=None, page=1):
         region = REGIONS.get(region_key.lower())
