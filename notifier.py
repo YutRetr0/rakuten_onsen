@@ -4,24 +4,23 @@ import smtplib
 from email.mime.text import MIMEText
 from email.utils import formataddr
 
-import requests
-
 from http_client import build_retry_session
 
 log = logging.getLogger(__name__)
 SESSION = build_retry_session()
 
+
 def notify(channels, title, body, url=""):
     for ch in channels:
         try:
             handler = {
-                "telegram":   _telegram,
-                "email":      _email,
-                "webhook":    _webhook,
-                "bark":       _bark,
-                "wecom":      _wecom_bot,
+                "telegram": _telegram,
+                "email": _email,
+                "webhook": _webhook,
+                "bark": _bark,
+                "wecom": _wecom_bot,
                 "serverchan": _serverchan,
-                "pushplus":   _pushplus,
+                "pushplus": _pushplus,
             }.get(ch)
             if handler:
                 handler(title, body, url)
@@ -66,8 +65,7 @@ def _pushplus(title, body, url):
     content = body + (f"\n\n[View]({url})" if url else "")
     r = SESSION.post(
         "http://www.pushplus.plus/send",
-        json={"token": token, "title": title,
-              "content": content, "template": "markdown"},
+        json={"token": token, "title": title, "content": content, "template": "markdown"},
         timeout=10,
     )
     r.raise_for_status()

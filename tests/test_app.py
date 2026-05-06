@@ -8,9 +8,9 @@ def _load_app(monkeypatch, tmp_path):
     monkeypatch.setenv("ENABLE_SCHEDULER", "0")
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
 
+    import app as app_module
     import db
     import watcher
-    import app as app_module
 
     importlib.reload(db)
     importlib.reload(watcher)
