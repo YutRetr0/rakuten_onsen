@@ -7,6 +7,8 @@ import time
 
 import requests
 
+from http_client import build_retry_session
+
 log = logging.getLogger(__name__)
 
 VACANT_URL = "https://app.rakuten.co.jp/services/api/Travel/VacantHotelSearch/20170426"
@@ -56,7 +58,7 @@ class RakutenTravel:
         self.min_interval = min_interval
         self.timeout = timeout
         self._last_call = 0.0
-        self.session = requests.Session()
+        self.session = build_retry_session(requests.Session())
         if not self.access_key:
             log.warning("RAKUTEN_ACCESS_KEY is not set; requests may be rejected with 401/403")
 

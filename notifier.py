@@ -6,7 +6,10 @@ from email.utils import formataddr
 
 import requests
 
+from http_client import build_retry_session
+
 log = logging.getLogger(__name__)
+SESSION = build_retry_session()
 
 def notify(channels, title, body, url=""):
     for ch in channels:
@@ -35,7 +38,7 @@ def _wecom_bot(title, body, url):
     md = f"## {title}\n\n{body}"
     if url:
         md += f"\n\n[View]({url})"
-    r = requests.post(
+    r = SESSION.post(
         hook,
         json={"msgtype": "markdown", "markdown": {"content": md}},
         timeout=10,
@@ -48,7 +51,7 @@ def _serverchan(title, body, url):
     if not key:
         return log.warning("serverchan not configured")
     desp = body + (f"\n\n[View]({url})" if url else "")
-    r = requests.post(
+    r = SESSION.post(
         f"https://sctapi.ftqq.com/{key}.send",
         data={"title": title, "desp": desp},
         timeout=10,
@@ -61,7 +64,7 @@ def _pushplus(title, body, url):
     if not token:
         return log.warning("pushplus not configured")
     content = body + (f"\n\n[View]({url})" if url else "")
-    r = requests.post(
+    r = SESSION.post(
         "http://www.pushplus.plus/send",
         json={"token": token, "title": title,
               "content": content, "template": "markdown"},
@@ -78,7 +81,7 @@ def _telegram(title, body, url):
     text = f"*{title}*\n\n{body}"
     if url:
         text += f"\n\n[View]({url})"
-    r = requests.post(
+    r = SESSION.post(
         f"https://api.telegram.org/bot{token}/sendMessage",
         json={"chat_id": chat, "text": text, "parse_mode": "Markdown"},
         timeout=10,
@@ -108,7 +111,7 @@ def _webhook(title, body, url):
     hook = os.getenv("WEBHOOK_URL")
     if not hook:
         return log.warning("webhook not configured")
-    r = requests.post(
+    r = SESSION.post(
         hook,
         json={"title": title, "body": body, "url": url},
         timeout=10,
@@ -120,7 +123,7 @@ def _bark(title, body, url):
     key = os.getenv("BARK_KEY")
     if not key:
         return log.warning("bark not configured")
-    r = requests.post(
+    r = SESSION.post(
         f"https://api.day.app/{key}",
         json={"title": title, "body": body, "url": url},
         timeout=10,

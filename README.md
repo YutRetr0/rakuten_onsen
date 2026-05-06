@@ -76,9 +76,11 @@ docker run --rm -v $PWD/data:/data \
   python migrate_json_to_sqlite.py
 ```
 
-> Note: the app starts an APScheduler `BackgroundScheduler` at module import time.
-> The image runs `gunicorn -w 2` by default; if you need exactly-once watch
-> execution, set `-w 1` or run a separate scheduler process.
+> Note: the app starts an APScheduler `BackgroundScheduler` at module import time
+> unless `ENABLE_SCHEDULER=0` is set.
+> The image now defaults to `GUNICORN_WORKERS=1` so the embedded scheduler does
+> not run in multiple workers by default. For a multi-worker web deployment, set
+> `ENABLE_SCHEDULER=0` on the web container and run a separate scheduler process.
 
 > **First-time setup**: after the image is first pushed to GHCR, go to
 > GitHub → Packages → `rakuten_onsen` → Package settings → Change visibility → Public.

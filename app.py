@@ -23,12 +23,86 @@ client = RakutenTravel(
 )
 cache = TTLCache(ttl=300)
 
-scheduler = BackgroundScheduler()
-scheduler.add_job(cache.invalidate_all, "interval", minutes=5,
-                  id="refresh", replace_existing=True)
-scheduler.add_job(lambda: check_all(client), "interval", minutes=5,
-                  id="watcher", replace_existing=True, max_instances=1)
-scheduler.start()
+
+def _scheduler_enabled():
+    return os.getenv("ENABLE_SCHEDULER", "1").lower() not in {"0", "false", "no"}
+
+
+def _parse_date(value, field_name):
+    try:
+        parsed = dateparser.parse(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"invalid {field_name}") from exc
+    if parsed is None:
+        raise ValueError(f"invalid {field_name}")
+    return parsed
+
+
+def _parse_int(value, field_name, *, minimum=None, maximum=None):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"invalid {field_name}") from exc
+    if minimum is not None and parsed < minimum:
+        raise ValueError(f"invalid {field_name}")
+    if maximum is not None and parsed > maximum:
+        raise ValueError(f"invalid {field_name}")
+    return parsed
+
+
+def _validate_region(region):
+    normalized = (region or "").strip().lower()
+    if normalized not in REGIONS:
+        raise ValueError("invalid region")
+    return normalized
+
+
+def _parse_search_dates(args):
+    has_checkin = "checkin" in args
+    has_checkout = "checkout" in args
+    if has_checkin != has_checkout:
+        raise ValueError("checkin and checkout must be provided together")
+    if has_checkin:
+        ci = _parse_date(args["checkin"], "checkin")
+        co = _parse_date(args["checkout"], "checkout")
+    else:
+        d = args.get("date")
+        ci = _parse_date(d, "date") if d else datetime.today() + timedelta(days=1)
+        co = ci + timedelta(days=1)
+    if co <= ci:
+        raise ValueError("checkout must be after checkin")
+    return ci, co
+
+
+def _validate_watch_item(item):
+    validated = {
+        "region": _validate_region(item["region"]),
+        "hotel_no": _parse_int(item["hotel_no"], "hotel_no", minimum=1),
+        "hotel_name": item.get("hotel_name", ""),
+        "checkin": _parse_date(item["checkin"], "checkin").strftime("%Y-%m-%d"),
+        "checkout": _parse_date(item["checkout"], "checkout").strftime("%Y-%m-%d"),
+        "adults": _parse_int(item.get("adults", 2), "adults", minimum=1),
+        "rooms": _parse_int(item.get("rooms", 1), "rooms", minimum=1),
+        "room_keywords": item.get("room_keywords", []),
+        "channels": item.get("channels", ["wecom"]),
+    }
+    if validated["checkout"] <= validated["checkin"]:
+        raise ValueError("checkout must be after checkin")
+    max_price = item.get("max_price")
+    validated["max_price"] = None if max_price in (None, "") else _parse_int(max_price, "max_price", minimum=1)
+    return validated
+
+
+scheduler = None
+if _scheduler_enabled():
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(cache.invalidate_all, "interval", minutes=5,
+                      id="refresh", replace_existing=True)
+    scheduler.add_job(lambda: check_all(client), "interval", minutes=5,
+                      id="watcher", replace_existing=True, max_instances=1)
+    scheduler.start()
+else:
+    app.logger.info("scheduler disabled by ENABLE_SCHEDULER")
 
 
 def _do_search(region, ci, co, adults, rooms, max_charge, max_pages):
@@ -60,23 +134,16 @@ def index():
 
 @app.route("/api/search")
 def api_search():
-    region = request.args.get("region", "oita")
-
-    if request.args.get("checkin") and request.args.get("checkout"):
-        ci = dateparser.parse(request.args["checkin"])
-        co = dateparser.parse(request.args["checkout"])
-    else:
-        d = request.args.get("date")
-        ci = dateparser.parse(d) if d else datetime.today() + timedelta(days=1)
-        co = ci + timedelta(days=1)
-
-    if co <= ci:
-        return jsonify({"error": "checkout must be after checkin"}), 400
-
-    adults     = int(request.args.get("adults", 2))
-    rooms      = int(request.args.get("rooms", 1))
-    max_charge = request.args.get("max_charge", type=int)
-    pages      = min(int(request.args.get("pages", 2)), 5)
+    try:
+        region = _validate_region(request.args.get("region", "oita"))
+        ci, co = _parse_search_dates(request.args)
+        adults = _parse_int(request.args.get("adults", 2), "adults", minimum=1)
+        rooms = _parse_int(request.args.get("rooms", 1), "rooms", minimum=1)
+        max_charge_raw = request.args.get("max_charge")
+        max_charge = None if max_charge_raw in (None, "") else _parse_int(max_charge_raw, "max_charge", minimum=1)
+        pages = _parse_int(request.args.get("pages", 2), "pages", minimum=1, maximum=5)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
 
     key = f"{region}:{ci.date()}:{co.date()}:{adults}:{rooms}:{max_charge}:{pages}"
     try:
@@ -111,18 +178,10 @@ def api_watch_add():
     for k in required:
         if k not in body:
             return jsonify({"error": f"missing field: {k}"}), 400
-    item = {
-        "region":        body["region"],
-        "hotel_no":      int(body["hotel_no"]),
-        "hotel_name":    body.get("hotel_name", ""),
-        "checkin":       body["checkin"],
-        "checkout":      body["checkout"],
-        "adults":        int(body.get("adults", 2)),
-        "rooms":         int(body.get("rooms", 1)),
-        "room_keywords": body.get("room_keywords", []),
-        "max_price":     body.get("max_price"),
-        "channels":      body.get("channels", ["wecom"]),
-    }
+    try:
+        item = _validate_watch_item(body)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
     return jsonify(add_watch(item))
 
 @app.route("/api/watch/<wid>", methods=["DELETE"])
