@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
+from werkzeug.exceptions import BadRequest
 
 from cache import TTLCache
 from rakuten import REGIONS, RakutenTravel
@@ -67,6 +68,11 @@ def _normalize_region(value):
     if region not in REGIONS:
         raise InputError("invalid region")
     return region
+
+
+def _input_error_response(error):
+    message = error.args[0] if error.args else "invalid request"
+    return jsonify({"error": message}), 400
 
 
 def _parse_stay_dates(args):
@@ -153,7 +159,7 @@ def api_search():
         max_charge = _parse_optional_int(request.args.get("max_charge"), "max_charge", minimum=0)
         pages = _parse_positive_int(request.args.get("pages", 2), "pages", maximum=5)
     except InputError as e:
-        return jsonify({"error": str(e)}), 400
+        return _input_error_response(e)
 
     key = f"{region}:{ci.date()}:{co.date()}:{adults}:{rooms}:{max_charge}:{pages}"
     try:
@@ -183,13 +189,16 @@ def api_watch_list():
 
 @app.route("/api/watch", methods=["POST"])
 def api_watch_add():
-    body = request.get_json(silent=True)
+    try:
+        body = request.get_json(force=True)
+    except BadRequest:
+        return jsonify({"error": "invalid JSON body"}), 400
     if not isinstance(body, dict):
         return jsonify({"error": "invalid JSON body"}), 400
     try:
         item = _build_watch_item(body)
     except InputError as e:
-        return jsonify({"error": str(e)}), 400
+        return _input_error_response(e)
     return jsonify(add_watch(item))
 
 

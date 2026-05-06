@@ -142,7 +142,7 @@ class RakutenTravel:
 
         if last_error:
             raise last_error
-        raise RuntimeError("request retry loop exited unexpectedly")
+        raise RuntimeError("maximum retry attempts exceeded without success")
 
     def search_vacant_onsen(self, region_key, checkin, checkout, adults=2, rooms=1, max_charge=None, page=1):
         region = REGIONS.get(region_key.lower())
